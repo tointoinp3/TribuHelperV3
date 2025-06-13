@@ -1,0 +1,1222 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TribuHelper - Calculadora de Dívidas</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SheetJS for Excel export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Google Fonts: Poppins for a modern look -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Feather Icons for a clean icon set -->
+    <script src="https://unpkg.com/feather-icons"></script>
+    <style>
+        /* Custom styles for the application */
+        body {
+            font-family: 'Poppins', sans-serif;
+        }
+
+        /* --- Animations --- */
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(-15px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes popIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+        .pop-in {
+            animation: popIn 0.4s ease-out forwards;
+        }
+
+        /* --- Tab Styling --- */
+        .tab {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+        .tab::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background-color: #3b82f6; /* Blue-500 */
+            transform: scaleX(0);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transform-origin: center;
+        }
+        .tab-active::after {
+            transform: scaleX(1);
+        }
+       
+        .tab-inactive:hover::after {
+            transform: scaleX(0.5);
+            background-color: #93c5fd; /* Blue-300 */
+        }
+
+        /* --- Custom Scrollbar --- */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #e0e7ff; }
+        ::-webkit-scrollbar-thumb { background: #93c5fd; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #60a5fa; }
+        .dark ::-webkit-scrollbar-track { background: #1e293b; }
+        .dark ::-webkit-scrollbar-thumb { background: #475569; }
+        .dark ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        
+        /* --- Hide default number input arrows --- */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+        
+        /* --- Custom Alert Modal --- */
+        #alert-modal {
+            transition: opacity 0.3s ease-in-out;
+        }
+        #alert-modal-content {
+            transition: transform 0.3s ease-in-out;
+        }
+        
+        /* --- Calculator Styles --- */
+        .calculator {
+            @apply fixed top-20 left-4 z-50 p-4 rounded-2xl shadow-2xl transition-all duration-300;
+            background-color: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        .dark .calculator {
+            background-color: rgba(30, 41, 59, 0.8);
+        }
+    </style>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+      }
+    </script>
+</head>
+<body class="antialiased bg-blue-50 text-gray-800 dark:bg-slate-900 dark:text-gray-300 transition-colors duration-300">
+
+    <!-- Calculator -->
+    <div id="calculator" class="calculator hidden">
+        <div id="calc-display" class="bg-gray-100 dark:bg-slate-900 text-right rounded-lg p-4 text-2xl font-semibold mb-4">0</div>
+        <div class="grid grid-cols-4 gap-2">
+            <button class="calc-btn bg-blue-200 dark:bg-slate-600 hover:bg-blue-300 dark:hover:bg-slate-500 p-4 rounded-lg font-bold" data-value="clear">C</button>
+            <button class="calc-btn bg-gray-200 dark:bg-slate-700 hover:bg-gray-300 dark:hover:bg-slate-600 p-4 rounded-lg font-bold" data-value="(">(</button>
+            <button class="calc-btn bg-gray-200 dark:bg-slate-700 hover:bg-gray-300 dark:hover:bg-slate-600 p-4 rounded-lg font-bold" data-value=")">)</button>
+            <button class="calc-btn bg-blue-500 text-white hover:bg-blue-600 p-4 rounded-lg font-bold" data-value="/">/</button>
+            <button class="calc-btn bg-gray-200 dark:bg-slate-700 hover:bg-gray-300 dark:hover:bg-slate-600 p-4 rounded-lg font-bold" data-value="7">7</button>
+            <button class="calc-btn bg-gray-200 dark:bg-slate-700 hover:bg-gray-300 dark:hover:bg-slate-600 p-4 rounded-lg font-bold" data-value="8">8</button>
+            <button class="calc-btn bg-gray-200 dark:bg-slate-700 hover:bg-gray-300 dark:hover:bg-slate-600 p-4 rounded-lg font-bold" data-value="9">9</button>
+            <button class="calc-btn bg-blue-500 text-white hover:bg-blue-600 p-4 rounded-lg font-bold" data-value="*">x</button>
+            <button class="calc-btn bg-gray-200 dark:bg-slate-700 hover:bg-gray-300 dark:hover:bg-slate-600 p-4 rounded-lg font-bold" data-value="4">4</button>
+            <button class="calc-btn bg-gray-200 dark:bg-slate-700 hover:bg-gray-300 dark:hover:bg-slate-600 p-4 rounded-lg font-bold" data-value="5">5</button>
+            <button class="calc-btn bg-gray-200 dark:bg-slate-700 hover:bg-gray-300 dark:hover:bg-slate-600 p-4 rounded-lg font-bold" data-value="6">6</button>
+            <button class="calc-btn bg-blue-500 text-white hover:bg-blue-600 p-4 rounded-lg font-bold" data-value="-">-</button>
+            <button class="calc-btn bg-gray-200 dark:bg-slate-700 hover:bg-gray-300 dark:hover:bg-slate-600 p-4 rounded-lg font-bold" data-value="1">1</button>
+            <button class="calc-btn bg-gray-200 dark:bg-slate-700 hover:bg-gray-300 dark:hover:bg-slate-600 p-4 rounded-lg font-bold" data-value="2">2</button>
+            <button class="calc-btn bg-gray-200 dark:bg-slate-700 hover:bg-gray-300 dark:hover:bg-slate-600 p-4 rounded-lg font-bold" data-value="3">3</button>
+            <button class="calc-btn bg-blue-500 text-white hover:bg-blue-600 p-4 rounded-lg font-bold" data-value="+">+</button>
+            <button class="calc-btn bg-gray-200 dark:bg-slate-700 hover:bg-gray-300 dark:hover:bg-slate-600 p-4 rounded-lg font-bold col-span-2" data-value="0">0</button>
+            <button class="calc-btn bg-gray-200 dark:bg-slate-700 hover:bg-gray-300 dark:hover:bg-slate-600 p-4 rounded-lg font-bold" data-value=",">,</button>
+            <button class="calc-btn bg-green-500 text-white hover:bg-green-600 p-4 rounded-lg font-bold" data-value="=">=</button>
+        </div>
+    </div>
+
+
+    <!-- Main Application Container -->
+    <div id="app" class="max-w-screen-2xl mx-auto p-4 sm:p-6 lg:p-8">
+
+        <!-- Header -->
+        <header class="text-center mb-8 fade-in relative">
+            <h1 class="text-5xl font-bold text-blue-900 dark:text-blue-400">TribuHelper</h1>
+            <p class="text-lg text-gray-500 dark:text-gray-400 mt-2">Uma ferramenta por Lemos Dantas Consultoria</p>
+            <div class="absolute top-0 left-0">
+                 <button id="calculator-toggle" class="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-gray-300 dark:focus:ring-slate-600">
+                    <i data-feather="calculator"></i>
+                </button>
+            </div>
+             <div class="absolute top-0 right-0">
+                <button id="theme-toggle" class="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-gray-300 dark:focus:ring-slate-600">
+                    <i id="theme-icon-light" data-feather="sun"></i>
+                    <i id="theme-icon-dark" data-feather="moon" class="hidden"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Card -->
+        <div class="bg-white dark:bg-slate-800 p-6 sm:p-8 lg:p-10 fade-in rounded-2xl shadow-lg" style="animation-delay: 100ms;">
+            
+            <!-- Tab Navigation -->
+            <nav class="border-b border-gray-200 dark:border-slate-700 mb-8">
+                <div class="flex space-x-8">
+                    <button id="tab-unpaid" class="tab tab-active text-blue-800 dark:text-blue-400 font-semibold whitespace-nowrap pb-4 px-1 text-lg">Dívidas Atuais</button>
+                    <button id="tab-paid" class="tab tab-inactive text-gray-500 dark:text-gray-400 hover:text-blue-700 dark:hover:text-blue-500 whitespace-nowrap pb-4 px-1 text-lg">Dívidas Vencidas</button>
+                    <button class="tab tab-inactive text-gray-400 dark:text-gray-600 cursor-not-allowed whitespace-nowrap pb-4 px-1 text-lg">Em Breve</button>
+                </div>
+            </nav>
+
+            <!-- View for Unpaid Debts -->
+            <div id="view-unpaid">
+                <div class="space-y-10">
+                    <!-- Section 1: Correction Type -->
+                    <section class="pop-in" style="animation-delay: 200ms;">
+                        <h2 class="text-2xl font-semibold text-gray-800 dark:text-gray-200 mb-4 flex items-center"><span class="bg-blue-500 text-white rounded-full h-8 w-8 text-sm flex items-center justify-center mr-3">1</span> Tipo de Correção</h2>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <button id="btnSelic" class="rate-selector-active transition duration-300 ease-in-out flex-1 text-center py-4 px-5 rounded-xl font-semibold">SELIC Acumulada</button>
+                            <button id="btnIgpd" class="rate-selector-inactive transition duration-300 ease-in-out flex-1 text-center py-4 px-5 rounded-xl font-semibold">IGP-DI (SEFAZ/AP)</button>
+                        </div>
+                        <p class="text-center text-sm text-red-500 dark:text-red-400 font-medium mt-4">Atenção: Valores atualizados até 30/06/2025. O sistema precisa de atualizações mensais.</p>
+                    </section>
+
+                    <!-- Section 2: Add Debts -->
+                    <section class="pop-in" style="animation-delay: 300ms;">
+                        <h2 class="text-2xl font-semibold text-gray-800 dark:text-gray-200 mb-4 flex items-center"><span class="bg-blue-500 text-white rounded-full h-8 w-8 text-sm flex items-center justify-center mr-3">2</span> Adicionar Dívidas</h2>
+                        <div class="bg-blue-50 dark:bg-slate-900/50 p-6 rounded-xl border border-blue-200 dark:border-slate-700 space-y-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+                                <div>
+                                    <label for="ano" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Ano</label>
+                                    <select id="ano" class="form-select mt-1 block w-full py-2.5 px-3 rounded-lg shadow-sm border-gray-300 bg-white dark:bg-slate-700 dark:border-slate-600 dark:text-gray-200"></select>
+                                </div>
+                                <div id="mes-selector-container-unpaid" class="relative">
+                                    <label for="mes-selector-btn" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Mês</label>
+                                    <div class="form-multiselect mt-1 relative w-full bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg shadow-sm">
+                                        <button type="button" id="mes-selector-btn" class="w-full pl-3 pr-10 py-2.5 text-left">
+                                            <span id="mes-selector-text" class="block truncate text-gray-500 dark:text-gray-400">Selecione o(s) mês(es)</span>
+                                            <span class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none"><i data-feather="chevron-down" class="h-5 w-5 text-gray-400"></i></span>
+                                        </button>
+                                        <div id="mes-selector-dropdown" class="hidden absolute z-50 mt-2 w-full bg-white dark:bg-slate-700 shadow-lg rounded-lg py-1 text-base ring-1 ring-black ring-opacity-5 dark:ring-slate-600 overflow-auto focus:outline-none sm:text-sm max-h-60"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="custom-values-section" class="hidden pt-4">
+                                <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">Valores Personalizados</h3>
+                                <div id="custom-values-table-container" class="overflow-y-auto max-h-72 border dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800">
+                                    <table class="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
+                                        <thead class="bg-gray-50 dark:bg-slate-700/50 sticky top-0 z-10"><tr><th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Mês/Ano</th><th class="px-6 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Valor Original (R$)</th><th class="px-6 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Multa (%)</th><th class="px-6 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Ação</th></tr></thead>
+                                        <tbody id="custom-values-table-body" class="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-slate-700"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="mt-6 flex justify-end"><button id="addDebtBtn" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg shadow-md transition-transform transform hover:scale-105 flex items-center justify-center gap-2"><i data-feather="plus-circle" class="h-5 w-5"></i>Adicionar Dívida(s)</button></div>
+                        </div>
+                    </section>
+
+                    <!-- Section 3: Results -->
+                    <section class="pop-in" style="animation-delay: 400ms;">
+                        <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
+                            <h2 class="text-2xl font-semibold text-gray-800 dark:text-gray-200 flex items-center"><span class="bg-blue-500 text-white rounded-full h-8 w-8 text-sm flex items-center justify-center mr-3">3</span> Resultados</h2>
+                            <div class="flex space-x-3">
+                                <button id="newCalcBtn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow transition-transform transform hover:scale-105 flex items-center gap-2"><i data-feather="trash-2" class="w-4 h-4"></i>Novo Cálculo</button>
+                                <button id="exportBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow transition-transform transform hover:scale-105 flex items-center gap-2"><i data-feather="download" class="w-4 h-4"></i>Exportar</button>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+                            <table id="resultsTable" class="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
+                                <thead id="tableHeader"></thead>
+                                <tbody id="tableBody" class="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-slate-700"></tbody>
+                                <tfoot id="tableFooter" class="bg-gray-50 dark:bg-slate-700/50 font-semibold"></tfoot>
+                            </table>
+                        </div>
+                    </section>
+                </div>
+            </div>
+            
+            <!-- View for Paid Debts -->
+            <div id="view-paid" class="hidden">
+                 <div class="space-y-10">
+                    <!-- Section 1: Vencimento das Dívidas -->
+                    <section class="pop-in" style="animation-delay: 200ms;">
+                        <h2 class="text-2xl font-semibold text-gray-800 dark:text-gray-200 mb-4 flex items-center"><span class="bg-blue-500 text-white rounded-full h-8 w-8 text-sm flex items-center justify-center mr-3">1</span> Vencimento das Dívidas</h2>
+                        <div class="bg-blue-50 dark:bg-slate-900/50 p-6 rounded-xl border border-blue-200 dark:border-slate-700 space-y-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+                                <div>
+                                    <label for="ano_paid" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Ano de Vencimento</label>
+                                    <select id="ano_paid" class="form-select mt-1 block w-full py-2.5 px-3 rounded-lg shadow-sm bg-white dark:bg-slate-700 border-gray-300 dark:border-slate-600"></select>
+                                </div>
+                                <div id="mes-selector-container-paid" class="relative">
+                                    <label for="mes-selector-btn_paid" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Mês de Vencimento</label>
+                                    <div class="form-multiselect mt-1 relative w-full bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg shadow-sm">
+                                        <button type="button" id="mes-selector-btn_paid" class="w-full pl-3 pr-10 py-2.5 text-left">
+                                            <span id="mes-selector-text_paid" class="block truncate text-gray-500 dark:text-gray-400">Selecione o(s) mês(es)</span>
+                                            <span class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none"><i data-feather="chevron-down" class="h-5 w-5 text-gray-400"></i></span>
+                                        </button>
+                                        <div id="mes-selector-dropdown_paid" class="hidden absolute z-50 mt-2 w-full bg-white dark:bg-slate-700 shadow-lg rounded-lg py-1 text-base ring-1 ring-black ring-opacity-5 dark:ring-slate-600 overflow-auto focus:outline-none sm:text-sm max-h-60"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="custom-values-section_paid" class="hidden pt-4">
+                                <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">Valores Personalizados</h3>
+                                <div id="custom-values-table-container_paid" class="overflow-y-auto max-h-72 border dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800">
+                                    <table class="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
+                                        <thead class="bg-gray-50 dark:bg-slate-700/50 sticky top-0 z-10"><tr><th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Mês/Ano</th><th class="px-6 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Valor Original (R$)</th><th class="px-6 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Multa (%)</th><th class="px-6 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Ação</th></tr></thead>
+                                        <tbody id="custom-values-table-body_paid" class="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-slate-700"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="mt-6 flex justify-end"><button id="addDebtBtn_paid" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg shadow-md transition-transform transform hover:scale-105 flex items-center justify-center gap-2"><i data-feather="plus-circle" class="h-5 w-5"></i>Adicionar Dívida(s)</button></div>
+                        </div>
+                    </section>
+                    
+                    <!-- Section 2: Payment Date -->
+                    <section id="payment-date-section" class="pop-in" style="animation-delay: 300ms;">
+                        <h2 class="text-2xl font-semibold text-gray-800 dark:text-gray-200 mb-4 flex items-center"><span class="bg-blue-500 text-white rounded-full h-8 w-8 text-sm flex items-center justify-center mr-3">2</span> Data de Pagamento</h2>
+                        <div class="bg-blue-50 dark:bg-slate-900/50 p-6 rounded-xl border border-blue-200 dark:border-slate-700">
+                             <div id="date-warning" class="hidden bg-yellow-100 dark:bg-yellow-500/10 border-l-4 border-yellow-400 dark:border-yellow-500 p-4 mb-6 rounded-r-lg">
+                                <div class="flex">
+                                    <div class="py-1"><i data-feather="alert-triangle" class="h-5 w-5 text-yellow-500 dark:text-yellow-400 mr-3"></i></div>
+                                    <div>
+                                        <p class="font-bold text-yellow-800 dark:text-yellow-300">Atenção</p>
+                                        <p class="text-sm text-yellow-700 dark:text-yellow-400">A data de pagamento selecionada é anterior a uma ou mais datas de vencimento.</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+                                <div>
+                                    <label for="ano_pgto" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Ano do Pagamento</label>
+                                    <select id="ano_pgto" class="form-select mt-1 block w-full py-2.5 px-3 rounded-lg shadow-sm bg-white dark:bg-slate-700 border-gray-300 dark:border-slate-600"></select>
+                                </div>
+                                <div>
+                                    <label for="mes_pgto" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Mês do Pagamento</label>
+                                    <select id="mes_pgto" class="form-select mt-1 block w-full py-2.5 px-3 rounded-lg shadow-sm bg-white dark:bg-slate-700 border-gray-300 dark:border-slate-600"></select>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                    
+                    <!-- Section 3: Paid Debt Results -->
+                    <section class="pop-in" style="animation-delay: 400ms;">
+                        <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
+                             <h2 class="text-2xl font-semibold text-gray-800 dark:text-gray-200 flex items-center"><span class="bg-blue-500 text-white rounded-full h-8 w-8 text-sm flex items-center justify-center mr-3">3</span> Resultados</h2>
+                            <div class="flex space-x-3">
+                                <button id="newCalcBtn_paid" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow transition-transform transform hover:scale-105 flex items-center gap-2"><i data-feather="trash-2" class="w-4 h-4"></i>Novo Cálculo</button>
+                                <button id="exportBtn_paid" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow transition-transform transform hover:scale-105 flex items-center gap-2"><i data-feather="download" class="w-4 h-4"></i>Exportar</button>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+                            <table id="resultsTable_paid" class="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
+                                <thead id="tableHeader_paid"></thead>
+                                <tbody id="tableBody_paid" class="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-slate-700"></tbody>
+                                <tfoot id="tableFooter_paid" class="bg-gray-50 dark:bg-slate-700/50 font-semibold"></tfoot>
+                            </table>
+                        </div>
+                    </section>
+                 </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Custom Alert Modal -->
+    <div id="alert-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden opacity-0">
+        <div id="alert-modal-content" class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-8 max-w-sm w-full text-center transform scale-95">
+            <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 dark:bg-yellow-500/20">
+                <i data-feather="alert-triangle" class="h-6 w-6 text-yellow-500 dark:text-yellow-400"></i>
+            </div>
+            <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-200 mt-4">Atenção</h3>
+            <div class="mt-2">
+                <p id="alert-message" class="text-sm text-gray-600 dark:text-gray-400">Mensagem de alerta.</p>
+            </div>
+            <div class="mt-6">
+                <button id="alert-ok-btn" type="button" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:text-sm">
+                    Entendido
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // --- Custom Alert Function ---
+        const showAlert = (message) => {
+            const modal = document.getElementById('alert-modal');
+            const modalContent = document.getElementById('alert-modal-content');
+            document.getElementById('alert-message').textContent = message;
+            
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modalContent.classList.remove('scale-95');
+                feather.replace();
+            }, 10);
+        };
+        
+        document.getElementById('alert-ok-btn').addEventListener('click', () => {
+            const modal = document.getElementById('alert-modal');
+            const modalContent = document.getElementById('alert-modal-content');
+            modal.classList.add('opacity-0');
+            modalContent.classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        });
+
+        // --- BANCO DE DADOS (Unchanged) ---
+        const selicData = { '1995': { 2: 422.84, 3: 420.24, 4: 415.98, 5: 411.73, 6: 407.69, 7: 403.67, 8: 399.83, 9: 396.51, 10: 393.42, 11: 390.54, 12: 387.76 }, '1996': { 1: 385.18, 2: 382.83, 3: 380.61, 4: 378.54, 5: 376.53, 6: 374.55, 7: 372.62, 8: 370.65, 9: 368.75, 10: 366.89, 11: 365.09, 12: 363.29 }, '1997': { 1: 361.56, 2: 359.89, 3: 358.25, 4: 356.59, 5: 355.01, 6: 353.4, 7: 351.8, 8: 350.21, 9: 348.62, 10: 346.95, 11: 343.91, 12: 340.94 }, '1998': { 1: 338.27, 2: 336.14, 3: 333.94, 4: 332.23, 5: 330.6, 6: 329, 7: 327.3, 8: 325.82, 9: 323.33, 10: 320.39, 11: 317.76, 12: 315.36 }, '1999': { 1: 313.18, 2: 310.8, 3: 307.47, 4: 305.12, 5: 303.1, 6: 301.43, 7: 299.77, 8: 298.2, 9: 296.71, 10: 295.33, 11: 293.94, 12: 292.34 }, '2000': { 1: 290.88, 2: 289.43, 3: 287.98, 4: 286.68, 5: 285.19, 6: 283.8, 7: 282.49, 8: 281.08, 9: 279.86, 10: 278.57, 11: 277.35, 12: 276.15 }, '2001': { 1: 274.88, 2: 273.86, 3: 272.6, 4: 271.41, 5: 270.07, 6: 268.8, 7: 267.3, 8: 265.7, 9: 264.38, 10: 262.85, 11: 261.46, 12: 260.07 }, '2002': { 1: 258.54, 2: 257.29, 3: 255.92, 4: 254.44, 5: 253.03, 6: 251.7, 7: 250.16, 8: 248.72, 9: 247.34, 10: 245.69, 11: 244.15, 12: 242.41 }, '2003': { 1: 240.44, 2: 238.61, 3: 236.83, 4: 234.96, 5: 232.99, 6: 231.13, 7: 229.05, 8: 227.28, 9: 225.6, 10: 223.96, 11: 222.62, 12: 221.25 }, '2004': { 1: 219.98, 2: 218.9, 3: 217.52, 4: 216.34, 5: 215.11, 6: 213.88, 7: 212.59, 8: 211.3, 9: 210.05, 10: 208.84, 11: 207.59, 12: 206.11 }, '2005': { 1: 204.73, 2: 203.51, 3: 201.98, 4: 200.57, 5: 199.07, 6: 197.48, 7: 195.97, 8: 194.31, 9: 192.81, 10: 191.4, 11: 190.02, 12: 188.55 }, '2006': { 1: 187.12, 2: 185.97, 3: 184.55, 4: 183.47, 5: 182.19, 6: 181.01, 7: 179.84, 8: 178.58, 9: 177.52, 10: 176.43, 11: 175.41, 12: 174.42 }, '2007': { 1: 173.34, 2: 172.47, 3: 171.42, 4: 170.48, 5: 169.45, 6: 168.54, 7: 167.57, 8: 166.58, 9: 165.78, 10: 164.85, 11: 164.01, 12: 163.17 }, '2008': { 1: 162.24, 2: 161.44, 3: 160.6, 4: 159.7, 5: 158.82, 6: 157.86, 7: 156.79, 8: 155.77, 9: 154.67, 10: 153.49, 11: 152.47, 12: 151.35 }, '2009': { 1: 150.3, 2: 149.44, 3: 148.47, 4: 147.63, 5: 146.86, 6: 146.1, 7: 145.31, 8: 144.62, 9: 143.93, 10: 143.24, 11: 142.58, 12: 141.85 }, '2010': { 1: 141.19, 2: 140.6, 3: 139.84, 4: 139.17, 5: 138.42, 6: 137.63, 7: 136.77, 8: 135.88, 9: 135.03, 10: 134.22, 11: 133.41, 12: 132.48 }, '2011': { 1: 131.62, 2: 130.78, 3: 129.86, 4: 129.02, 5: 128.03, 6: 127.07, 7: 126.1, 8: 125.03, 9: 124.09, 10: 123.21, 11: 122.35, 12: 121.44 }, '2012': { 1: 120.55, 2: 119.8, 3: 118.98, 4: 118.27, 5: 117.53, 6: 116.89, 7: 116.21, 8: 115.52, 9: 114.98, 10: 114.37, 11: 113.82, 12: 113.27 }, '2013': { 1: 112.67, 2: 112.18, 3: 111.63, 4: 111.02, 5: 110.42, 6: 109.81, 7: 109.09, 8: 108.38, 9: 107.67, 10: 106.86, 11: 106.14, 12: 105.35 }, '2014': { 1: 104.5, 2: 103.71, 3: 102.94, 4: 102.12, 5: 101.25, 6: 100.43, 7: 99.48, 8: 98.61, 9: 97.7, 10: 96.75, 11: 95.91, 12: 94.95 }, '2015': { 1: 94.01, 2: 93.19, 3: 92.15, 4: 91.2, 5: 90.21, 6: 89.14, 7: 87.96, 8: 86.85, 9: 85.74, 10: 84.63, 11: 83.57, 12: 82.41 }, '2016': { 1: 81.35, 2: 80.35, 3: 79.19, 4: 78.13, 5: 77.02, 6: 75.86, 7: 74.75, 8: 73.53, 9: 72.42, 10: 71.37, 11: 70.33, 12: 69.21 }, '2017': { 1: 68.12, 2: 67.25, 3: 66.2, 4: 65.41, 5: 64.48, 6: 63.67, 7: 62.87, 8: 62.07, 9: 61.43, 10: 60.79, 11: 60.22, 12: 59.68 }, '2018': { 1: 59.1, 2: 58.63, 3: 58.1, 4: 57.58, 5: 57.06, 6: 56.54, 7: 56, 8: 55.43, 9: 54.96, 10: 54.42, 11: 53.93, 12: 53.44 }, '2019': { 1: 52.9, 2: 52.41, 3: 51.94, 4: 51.42, 5: 50.88, 6: 50.41, 7: 49.84, 8: 49.34, 9: 48.88, 10: 48.4, 11: 48.02, 12: 47.65 }, '2020': { 1: 47.27, 2: 46.98, 3: 46.64, 4: 46.36, 5: 46.12, 6: 45.91, 7: 45.72, 8: 45.56, 9: 45.4, 10: 45.24, 11: 45.09, 12: 44.93 }, '2021': { 1: 44.78, 2: 44.65, 3: 44.45, 4: 44.24, 5: 43.97, 6: 43.66, 7: 43.3, 8: 42.87, 9: 42.43, 10: 41.94, 11: 41.35, 12: 40.58 }, '2022': { 1: 39.85, 2: 39.09, 3: 38.16, 4: 37.33, 5: 36.3, 6: 35.28, 7: 34.25, 8: 33.08, 9: 32.01, 10: 30.99, 11: 29.97, 12: 28.85 }, '2023': { 1: 27.73, 2: 26.81, 3: 25.64, 4: 24.72, 5: 23.6, 6: 22.53, 7: 21.46, 8: 20.32, 9: 19.35, 10: 18.35, 11: 17.43, 12: 16.54 }, '2024': { 1: 15.57, 2: 14.77, 3: 13.94, 4: 13.05, 5: 12.22, 6: 11.43, 7: 10.52, 8: 9.65, 9: 8.81, 10: 7.88, 11: 7.09, 12: 6.16 }, '2025': { 1: 5.15, 2: 4.16, 3: 3.2, 4: 2.14, 5: 1, 6: 0 } };
+        const igpdiData = { '1995': { 1: { am: 7.359581, juros: 384.12 }, 2: { am: 7.359581, juros: 383.12 }, 3: { am: 7.359581, juros: 382.12 }, 4: { am: 7.053149, juros: 381.12 }, 5: { am: 7.053149, juros: 380.12 }, 6: { am: 7.053149, juros: 379.12 }, 7: { am: 6.5841202, juros: 378.12 }, 8: { am: 6.5841202, juros: 377.12 }, 9: { am: 6.5841202, juros: 376.12 }, 10: { am: 6.2628628, juros: 375.12 }, 11: { am: 6.2628628, juros: 374.12 }, 12: { am: 6.2628628, juros: 373.12 } }, '1996': { 1: { am: 6.0096881, juros: 372.12 }, 2: { am: 6.0096881, juros: 371.12 }, 3: { am: 6.0096881, juros: 370.12 }, 4: { am: 6.0096881, juros: 369.12 }, 5: { am: 6.0096881, juros: 368.12 }, 6: { am: 6.0096881, juros: 367.12 }, 7: { am: 5.6292851, juros: 366.12 }, 8: { am: 5.6292851, juros: 365.12 }, 9: { am: 5.6292851, juros: 364.12 }, 10: { am: 5.6292851, juros: 363.12 }, 11: { am: 5.6292851, juros: 362.12 }, 12: { am: 5.6292851, juros: 361.12 } }, '1997': { 1: { am: 5.4679716, juros: 360.12 }, 2: { am: 5.4679716, juros: 359.12 }, 3: { am: 5.4679716, juros: 358.12 }, 4: { am: 5.4679716, juros: 357.12 }, 5: { am: 5.4679716, juros: 356.12 }, 6: { am: 5.4679716, juros: 355.12 }, 7: { am: 5.4679716, juros: 354.12 }, 8: { am: 5.4679716, juros: 353.12 }, 9: { am: 5.4679716, juros: 352.12 }, 10: { am: 5.4679716, juros: 351.12 }, 11: { am: 5.4679716, juros: 350.12 }, 12: { am: 5.4679716, juros: 349.12 } }, '1998': { 1: { am: 5.1818005, juros: 348.12 }, 2: { am: 5.1818005, juros: 347.12 }, 3: { am: 5.1818005, juros: 346.12 }, 4: { am: 5.1818005, juros: 345.12 }, 5: { am: 5.1818005, juros: 344.12 }, 6: { am: 5.1818005, juros: 343.12 }, 7: { am: 5.1818005, juros: 342.12 }, 8: { am: 5.1818005, juros: 341.12 }, 9: { am: 5.1818005, juros: 340.12 }, 10: { am: 5.1818005, juros: 339.12 }, 11: { am: 5.1818005, juros: 338.12 }, 12: { am: 5.1818005, juros: 337.12 } }, '1999': { 1: { am: 5.0974703, juros: 336.12 }, 2: { am: 5.0974703, juros: 335.12 }, 3: { am: 5.0974703, juros: 334.12 }, 4: { am: 5.0974703, juros: 333.12 }, 5: { am: 5.0974703, juros: 332.12 }, 6: { am: 5.0974703, juros: 331.12 }, 7: { am: 5.0974703, juros: 330.12 }, 8: { am: 5.0974703, juros: 329.12 }, 9: { am: 5.0974703, juros: 328.12 }, 10: { am: 5.0974703, juros: 327.12 }, 11: { am: 5.0974703, juros: 326.12 }, 12: { am: 5.0974703, juros: 325.12 } }, '2000': { 1: { am: 4.680226, juros: 324.12 }, 2: { am: 4.680226, juros: 323.12 }, 3: { am: 4.680226, juros: 322.12 }, 4: { am: 4.680226, juros: 321.12 }, 5: { am: 4.680226, juros: 320.12 }, 6: { am: 4.680226, juros: 319.12 }, 7: { am: 4.680226, juros: 318.12 }, 8: { am: 4.680226, juros: 317.12 }, 9: { am: 4.680226, juros: 316.12 }, 10: { am: 4.680226, juros: 315.12 }, 11: { am: 4.680226, juros: 314.12 }, 12: { am: 4.680226, juros: 313.12 } }, '2001': { 1: { am: 4.680226, juros: 312.12 }, 2: { am: 4.680226, juros: 311.12 }, 3: { am: 4.680226, juros: 310.12 }, 4: { am: 4.680226, juros: 309.12 }, 5: { am: 4.680226, juros: 308.12 }, 6: { am: 4.680226, juros: 307.12 }, 7: { am: 4.680226, juros: 306.12 }, 8: { am: 4.680226, juros: 305.12 }, 9: { am: 4.680226, juros: 304.12 }, 10: { am: 4.680226, juros: 303.12 }, 11: { am: 4.680226, juros: 301.73 }, 12: { am: 4.680226, juros: 300.34 } }, '2002': { 1: { am: 4.680226, juros: 298.81 }, 2: { am: 4.680226, juros: 297.56 }, 3: { am: 4.680226, juros: 296.19 }, 4: { am: 4.680226, juros: 294.71 }, 5: { am: 4.680226, juros: 293.3 }, 6: { am: 4.680226, juros: 291.97 }, 7: { am: 4.680226, juros: 290.43 }, 8: { am: 4.680226, juros: 288.99 }, 9: { am: 4.680226, juros: 287.61 }, 10: { am: 4.680226, juros: 285.96 }, 11: { am: 4.680226, juros: 284.42 }, 12: { am: 4.680226, juros: 282.68 } }, '2003': { 1: { am: 4.680226, juros: 280.71 }, 2: { am: 4.680226, juros: 278.88 }, 3: { am: 4.680226, juros: 277.1 }, 4: { am: 4.680226, juros: 275.23 }, 5: { am: 4.680226, juros: 273.26 }, 6: { am: 4.680226, juros: 271.4 }, 7: { am: 4.680226, juros: 269.32 }, 8: { am: 4.680226, juros: 267.55 }, 9: { am: 4.680226, juros: 265.87 }, 10: { am: 4.680226, juros: 264.23 }, 11: { am: 4.680226, juros: 262.89 }, 12: { am: 4.680226, juros: 261.52 } }, '2004': { 1: { am: 4.680226, juros: 260.25 }, 2: { am: 4.680226, juros: 259.17 }, 3: { am: 4.680226, juros: 257.79 }, 4: { am: 4.680226, juros: 256.61 }, 5: { am: 4.680226, juros: 255.38 }, 6: { am: 4.680226, juros: 254.15 }, 7: { am: 4.680226, juros: 252.86 }, 8: { am: 4.680226, juros: 251.57 }, 9: { am: 4.680226, juros: 250.32 }, 10: { am: 4.680226, juros: 249.11 }, 11: { am: 4.680226, juros: 247.86 }, 12: { am: 4.680226, juros: 246.38 } }, '2005': { 1: { am: 4.680226, juros: 245 }, 2: { am: 4.680226, juros: 244 }, 3: { am: 4.680226, juros: 243 }, 4: { am: 4.680226, juros: 242 }, 5: { am: 4.680226, juros: 241 }, 6: { am: 4.680226, juros: 240 }, 7: { am: 4.680226, juros: 239 }, 8: { am: 4.680226, juros: 238 }, 9: { am: 4.680226, juros: 237 }, 10: { am: 4.680226, juros: 236 }, 11: { am: 4.680226, juros: 235 }, 12: { am: 4.680226, juros: 234 } }, '2006': { 1: { am: 4.5305661, juros: 233 }, 2: { am: 4.4981792, juros: 232 }, 3: { am: 4.4981792, juros: 231 }, 4: { am: 4.4981792, juros: 230 }, 5: { am: 4.4972797, juros: 229 }, 6: { am: 4.4802548, juros: 228 }, 7: { am: 4.4504369, juros: 227 }, 8: { am: 4.4428839, juros: 226 }, 9: { am: 4.4247425, juros: 225 }, 10: { am: 4.4141485, juros: 224 }, 11: { am: 4.3786812, juros: 223 }, 12: { am: 4.3538642, juros: 222 } }, '2007': { 1: { am: 4.3425735, juros: 221 }, 2: { am: 4.3239804, juros: 220 }, 3: { am: 4.3140581, juros: 219 }, 4: { am: 4.304588, juros: 218 }, 5: { am: 4.29857, juros: 217 }, 6: { am: 4.2917032, juros: 216 }, 7: { am: 4.2805738, juros: 215 }, 8: { am: 4.264794, juros: 214 }, 9: { am: 4.2063261, juros: 213 }, 10: { am: 4.1576812, juros: 212 }, 11: { am: 4.1267307, juros: 211 }, 12: { am: 4.0838503, juros: 210 } }, '2008': { 1: { am: 4.0246874, juros: 209 }, 2: { am: 3.9852336, juros: 208 }, 3: { am: 3.970147, juros: 207 }, 4: { am: 3.9425492, juros: 206 }, 5: { am: 3.8988817, juros: 205 }, 6: { am: 3.8269353, juros: 204 }, 7: { am: 3.7559479, juros: 203 }, 8: { am: 3.7143472, juros: 202 }, 9: { am: 3.7143472, juros: 201 }, 10: { am: 3.7010235, juros: 200 }, 11: { am: 3.6611174, juros: 199 }, 12: { am: 3.6585564, juros: 198 } }, '2009': { 1: { am: 3.6585564, juros: 197 }, 2: { am: 3.6585564, juros: 196 }, 3: { am: 3.6581906, juros: 195 }, 4: { am: 3.6581906, juros: 194 }, 5: { am: 3.6581906, juros: 193 }, 6: { am: 3.6567279, juros: 192 }, 7: { am: 3.6501576, juros: 191 }, 8: { am: 3.6501576, juros: 190 }, 9: { am: 3.6501576, juros: 189 }, 10: { am: 3.6468754, juros: 188 }, 11: { am: 3.6377809, juros: 187 }, 12: { am: 3.6377809, juros: 186 } }, '2010': { 1: { am: 3.6352363, juros: 185 }, 2: { am: 3.6352363, juros: 184 }, 3: { am: 3.5988875, juros: 183 }, 4: { am: 3.5600826, juros: 182 }, 5: { am: 3.5377945, juros: 181 }, 6: { am: 3.5125045, juros: 180 }, 7: { am: 3.4582106, juros: 179 }, 8: { am: 3.4464925, juros: 178 }, 9: { am: 3.4389268, juros: 177 }, 10: { am: 3.4015102, juros: 176 }, 11: { am: 3.3645007, juros: 175 }, 12: { am: 3.3301997, juros: 174 } }, '2011': { 1: { am: 3.2784009, juros: 173 }, 2: { am: 3.2659902, juros: 172 }, 3: { am: 3.2342941, juros: 171 }, 4: { am: 3.2035401, juros: 170 }, 5: { am: 3.184117, juros: 169 }, 6: { am: 3.1682756, juros: 168 }, 7: { am: 3.1679588, juros: 167 }, 8: { am: 3.1679588, juros: 166 }, 9: { am: 3.1679588, juros: 165 }, 10: { am: 3.1487514, juros: 164 }, 11: { am: 3.1253116, juros: 163 }, 12: { am: 3.1128602, juros: 162 } }, '2012': { 1: { am: 3.0995322, juros: 161 }, 2: { am: 3.0995322, juros: 160 }, 3: { am: 3.0902614, juros: 159 }, 4: { am: 3.0880997, juros: 158 }, 5: { am: 3.0709027, juros: 157 }, 6: { am: 3.0398957, juros: 156 }, 7: { am: 3.0124821, juros: 155 }, 8: { am: 2.9918385, juros: 154 }, 9: { am: 2.9470434, juros: 153 }, 10: { am: 2.9095107, juros: 152 }, 11: { am: 2.8841304, juros: 151 }, 12: { am: 2.8841304, juros: 150 } }, '2013': { 1: { am: 2.876938, juros: 149 }, 2: { am: 2.8580747, juros: 148 }, 3: { am: 2.8492421, juros: 147 }, 4: { am: 2.843555, juros: 146 }, 5: { am: 2.8347672, juros: 145 }, 6: { am: 2.8347672, juros: 144 }, 7: { am: 2.8257249, juros: 143 }, 8: { am: 2.8044113, juros: 142 }, 9: { am: 2.8004906, juros: 141 }, 10: { am: 2.7876674, juros: 140 }, 11: { am: 2.7502638, juros: 139 }, 12: { am: 2.7330456, juros: 138 } }, '2014': { 1: { am: 2.7254144, juros: 137 }, 2: { am: 2.706738, juros: 136 }, 3: { am: 2.6959541, juros: 135 }, 4: { am: 2.6732317, juros: 134 }, 5: { am: 2.6342448, juros: 133 }, 6: { am: 2.6224438, juros: 132 }, 7: { am: 2.6224438, juros: 131 }, 8: { am: 2.6224438, juros: 130 }, 9: { am: 2.6224438, juros: 129 }, 10: { am: 2.6208713, juros: 128 }, 11: { am: 2.6203473, juros: 127 }, 12: { am: 2.6049779, juros: 126 } }, '2015': { 1: { am: 2.5756159, juros: 125 }, 2: { am: 2.5658656, juros: 124 }, 3: { am: 2.5487887, juros: 123 }, 4: { am: 2.5353513, juros: 122 }, 5: { am: 2.5050403, juros: 121 }, 6: { am: 2.4822041, juros: 120 }, 7: { am: 2.4723148, juros: 119 }, 8: { am: 2.4556166, juros: 118 }, 9: { am: 2.4414562, juros: 117 }, 10: { am: 2.4317292, juros: 116 }, 11: { am: 2.3976822, juros: 115 }, 12: { am: 2.3562128, juros: 114 } }, '2016': { 1: { am: 2.3285036, juros: 113 }, 2: { am: 2.3183031, juros: 112 }, 3: { am: 2.2833676, juros: 111 }, 4: { am: 2.2654703, juros: 110 }, 5: { am: 2.2557705, juros: 109 }, 6: { am: 2.2476789, juros: 108 }, 7: { am: 2.2225639, juros: 107 }, 8: { am: 2.1869172, juros: 106 }, 9: { am: 2.1869172, juros: 105 }, 10: { am: 2.1775537, juros: 104 }, 11: { am: 2.1769006, juros: 103 }, 12: { am: 2.1740743, juros: 102 } }, '2017': { 1: { am: 2.1729878, juros: 101 }, 2: { am: 2.1551005, juros: 100 }, 3: { am: 2.1458732, juros: 99 }, 4: { am: 2.1445865, juros: 98 }, 5: { am: 2.1445865, juros: 97 }, 6: { am: 2.1445865, juros: 96 }, 7: { am: 2.1445865, juros: 95 }, 8: { am: 2.1445865, juros: 94 }, 9: { am: 2.1445865, juros: 93 }, 10: { am: 2.1394518, juros: 92 }, 11: { am: 2.1262689, juros: 91 }, 12: { am: 2.1241448, juros: 90 } }, '2018': { 1: { am: 2.1072865, juros: 89 }, 2: { am: 2.0918071, juros: 88 }, 3: { am: 2.0797446, juros: 87 }, 4: { am: 2.0766297, juros: 86 }, 5: { am: 2.0650653, juros: 85 }, 6: { am: 2.0460371, juros: 84 }, 7: { am: 2.0130236, juros: 83 }, 8: { am: 1.9836653, juros: 82 }, 9: { am: 1.9749754, juros: 81 }, 10: { am: 1.9616363, juros: 80 }, 11: { am: 1.9271405, juros: 79 }, 12: { am: 1.9221429, juros: 78 } }, '2019': { 1: { am: 1.9221429, juros: 77 }, 2: { am: 1.9221429, juros: 76 }, 3: { am: 1.9207984, juros: 75 }, 4: { am: 1.8970848, juros: 74 }, 5: { am: 1.8770009, juros: 73 }, 6: { am: 1.8602586, juros: 72 }, 7: { am: 1.8528472, juros: 71 }, 8: { am: 1.8412473, juros: 70 }, 9: { am: 1.8412473, juros: 69 }, 10: { am: 1.8412473, juros: 68 }, 11: { am: 1.8320869, juros: 67 }, 12: { am: 1.8220655, juros: 66 } }, '2020': { 1: { am: 1.8067085, juros: 65 }, 2: { am: 1.7758094, juros: 64 }, 3: { am: 1.7742126, juros: 63 }, 4: { am: 1.7740352, juros: 62 }, 5: { am: 1.7454105, juros: 61 }, 6: { am: 1.7445382, juros: 60 }, 7: { am: 1.7260693, juros: 59 }, 8: { am: 1.6988871, juros: 58 }, 9: { am: 1.6600421, juros: 57 }, 10: { am: 1.5981921, juros: 56 }, 11: { am: 1.5471366, juros: 55 }, 12: { am: 1.4922228, juros: 54 } }, '2021': { 1: { am: 1.4538413, juros: 53 }, 2: { am: 1.4428755, juros: 52 }, 3: { am: 1.4020751, juros: 51 }, 4: { am: 1.3650814, juros: 50 }, 5: { am: 1.3360883, juros: 49 }, 6: { am: 1.3070713, juros: 48 }, 7: { am: 1.2640922, juros: 47 }, 8: { am: 1.2627032, juros: 46 }, 9: { am: 1.2446557, juros: 45 }, 10: { am: 1.2446557, juros: 44 }, 11: { am: 1.2446557, juros: 43 }, 12: { am: 1.2250548, juros: 42 } }, '2022': { 1: { am: 1.2250548, juros: 41 }, 2: { am: 1.2099307, juros: 40 }, 3: { am: 1.1860903, juros: 39 }, 4: { am: 1.1685618, juros: 38 }, 5: { am: 1.1415081, juros: 37 }, 6: { am: 1.136847, juros: 36 }, 7: { am: 1.1290565, juros: 35 }, 8: { am: 1.1220995, juros: 34 }, 9: { am: 1.1220995, juros: 33 }, 10: { am: 1.1220995, juros: 32 }, 11: { am: 1.1220995, juros: 31 }, 12: { am: 1.1220995, juros: 30 } }, '2023': { 1: { am: 1.1220995, juros: 29 }, 2: { am: 1.1186318, juros: 28 }, 3: { am: 1.117961, juros: 27 }, 4: { am: 1.117514, juros: 26 }, 5: { am: 1.117514, juros: 25 }, 6: { am: 1.117514, juros: 24 }, 7: { am: 1.117514, juros: 23 }, 8: { am: 1.117514, juros: 22 }, 9: { am: 1.117514, juros: 21 }, 10: { am: 1.1169555, juros: 20 }, 11: { am: 1.1119517, juros: 19 }, 12: { am: 1.1063095, juros: 18 } }, '2024': { 1: { am: 1.1008055, juros: 17 }, 2: { am: 1.0938052, juros: 16 }, 3: { am: 1.0938052, juros: 15 }, 4: { am: 1.0938052, juros: 14 }, 5: { am: 1.0938052, juros: 13 }, 6: { am: 1.0859861, juros: 12 }, 7: { am: 1.0769398, juros: 11 }, 8: { am: 1.0715819, juros: 10 }, 9: { am: 1.0630772, juros: 9 }, 10: { am: 1.0618031, juros: 8 }, 11: { am: 1.050978, juros: 7 }, 12: { am: 1.0350384, juros: 6 } }, '2025': { 1: { am: 1.0229674, juros: 5 }, 2: { am: 1.0141443, juros: 4 }, 3: { am: 1.01303, juros: 3 }, 4: { am: 1.003, juros: 2 }, 5: { am: 1.003, juros: 1 }, 6: { am: 1, juros: 0 }, 7: { am: 1, juros: 0 }, 8: { am: 1, juros: 0 }, 9: { am: 1, juros: 0 }, 10: { am: 1, juros: 0 }, 11: { am: 1, juros: 0 }, 12: { am: 1, juros: 0 } } };
+        const upfData = { '2017': {1: 2.1538, 2: 2.1717, 3: 2.1810, 4: 2.1823, 5: 2.18231, 6: 2.1823, 7: 2.1823, 8: 2.1823, 9: 2.1823, 10: 2.1876, 11: 2.2011, 12: 2.2033}, '2018': {1: 2.2210, 2: 2.23741, 3: 2.2504, 4: 2.2538, 5: 2.2664, 6: 2.2875, 7: 2.3250, 8: 2.3594, 9: 2.3698, 10: 2.3859, 11: 2.4286, 12: 2.4349}, '2019': {1: 2.4349, 2: 2.4349, 3: 2.4366, 4: 2.4671, 5: 2.4935, 6: 2.5159, 7: 2.5260, 8: 2.5419, 9: 2.5419, 10: 2.5419, 11: 2.5546, 12: 2.6355}, '2020': {1: 2.63551, 2: 2.6355, 3: 2.6379, 4: 2.6382, 5: 2.6814, 6: 2.6828, 7: 2.7115, 8: 2.7549, 9: 2.8193, 10: 2.9285, 11: 3.0251, 12: 3.1364}, '2021': {1: 3.2192, 2: 3.2437, 3: 3.3381, 4: 3.4285, 5: 3.5029, 6: 3.5807, 7: 3.7024, 8: 3.7065, 9: 3.7603, 10: 3.7603, 11: 3.7603, 12: 3.8204}, '2022': {1: 3.8204, 2: 3.8682, 3: 3.9459, 4: 4.0051, 5: 4.1000, 6: 4.1168, 7: 4.1453, 8: 4.1710, 9: 4.1710, 10: 4.1710, 11: 4.1710, 12: 4.1710}, '2023': {1: 4.1710, 2: 4.1839, 3: 4.1864, 4: 4.1881, 5: 4.1881, 6: 4.1881, 7: 4.1881, 8: 4.1881, 9: 4.1881, 10: 4.1902, 11: 4.2090, 12: 4.2305}, '2024': {1: 4.2516, 2: 4.2788, 3: 4.2788, 4: 4.2788, 5: 4.2788, 6: 4.3097, 7: 4.3459, 8: 4.3676, 9: 4.4025, 10: 4.4078, 11: 4.4532, 12: 4.5218}, '2025': {1: 4.5751, 2: 4.6150, 3: 4.6200, 4: 4.6662, 5: 4.6662, 6: 4.6802}};
+
+        // --- ESTADO DA APLICAÇÃO ---
+        let appState = {
+            activeView: 'unpaid',
+            unpaid: {
+                calculationType: 'SELIC',
+                debts: [],
+                pendingDebts: [],
+            },
+            paid: {
+                debts: [],
+                pendingDebts: [],
+                paymentDate: { 
+                    month: new Date().getMonth() + 1, 
+                    year: new Date().getFullYear() 
+                }
+            }
+        };
+
+        // --- ELEMENTOS DO DOM ---
+        const views = {
+            unpaid: document.getElementById('view-unpaid'),
+            paid: document.getElementById('view-paid'),
+        }
+
+        const tabs = {
+            unpaid: document.getElementById('tab-unpaid'),
+            paid: document.getElementById('tab-paid'),
+        }
+        
+        // --- FUNÇÕES DE UTILIDADE ---
+        const formatCurrency = (value) => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const formatDecimal = (value) => value.toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+        const formatPercent = (value) => `${(value || 0).toFixed(2).replace('.', ',')}%`;
+        const parseFloatBRL = (stringValue) => {
+            if (!stringValue || typeof stringValue !== 'string') return 0;
+            return parseFloat(stringValue.replace(/\./g, '').replace(',', '.'));
+        };
+
+        const evaluateMathExpression = (expression) => {
+            if (typeof expression !== 'string' || !expression) return 0;
+            // Sanitize: allow numbers, comma, and plus sign. Replace comma with dot.
+            const sanitized = expression.replace(/,/g, '.').replace(/[^-0-9.+*/()]/g, '');
+            try {
+                // Use a safer evaluation method
+                return new Function(`return ${sanitized}`)();
+            } catch (e) {
+                console.error("Invalid math expression:", e);
+                return 0;
+            }
+        };
+
+        const formatBRLInput = (e) => {
+            const input = e.target;
+            const originalValue = input.value;
+            // Allow math characters during typing
+            const allowedChars = "0123456789,+*/-()";
+            let sanitizedValue = "";
+            for (let i = 0; i < originalValue.length; i++) {
+                if (allowedChars.includes(originalValue[i])) {
+                    sanitizedValue += originalValue[i];
+                }
+            }
+            if (originalValue !== sanitizedValue) {
+                input.value = sanitizedValue;
+            }
+        };
+        
+        const handleBlurWithCalculation = (event, callback) => {
+             const input = event.target;
+             const expression = input.value;
+             const result = evaluateMathExpression(expression);
+             if (!isNaN(result)) {
+                input.value = result.toLocaleString('pt-BR', {minimumFractionDigits: 2});
+                callback(result);
+             } else {
+                 input.value = (0).toLocaleString('pt-BR', {minimumFractionDigits: 2});
+                 callback(0);
+             }
+        };
+        
+        const mesesNomes = { 1: 'Janeiro', 2: 'Fevereiro', 3: 'Março', 4: 'Abril', 5: 'Maio', 6: 'Junho', 7: 'Julho', 8: 'Agosto', 9: 'Setembro', 10: 'Outubro', 11: 'Novembro', 12: 'Dezembro' };
+        const mesesNomesAbrev = { 1: 'Jan', 2: 'Fev', 3: 'Mar', 4: 'Abr', 5: 'Mai', 6: 'Jun', 7: 'Jul', 8: 'Ago', 9: 'Set', 10: 'Out', 11: 'Nov', 12: 'Dez' };
+
+        // --- LÓGICA DE ATUALIZAÇÃO E RENDERIZAÇÃO ---
+        window.updateAndRender = (viewName, debtId, prop, rawValue) => {
+            const debt = appState[viewName].debts.find(d => d.id === debtId);
+            if (!debt) {
+                console.error("Debt not found for update:", debtId);
+                render(); 
+                return;
+            }
+            const parsedValue = parseFloat(String(rawValue).replace(',', '.')) || 0;
+            debt[prop] = parsedValue;
+            render();
+        }
+
+        function updatePendingDebtValue(viewName, pendingDebtId, prop, result) {
+            const pendingDebt = appState[viewName].pendingDebts.find(p => p.id === pendingDebtId);
+            if (!pendingDebt) return;
+            if (!isNaN(result)) {
+                pendingDebt[prop] = result;
+            }
+        }
+        
+        // --- LÓGICA DA CALCULADORA ---
+        function initializeCalculator() {
+            const calculator = document.getElementById('calculator');
+            const display = document.getElementById('calc-display');
+            const buttons = document.querySelectorAll('.calc-btn');
+            let currentInput = '0';
+            
+            document.getElementById('calculator-toggle').addEventListener('click', () => {
+                calculator.classList.toggle('hidden');
+            });
+            
+            buttons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const value = button.dataset.value;
+                    
+                    if(value === 'clear') {
+                        currentInput = '0';
+                    } else if (value === '=') {
+                        try {
+                            // Replace comma with dot for evaluation
+                            currentInput = String(new Function('return ' + currentInput.replace(/,/g, '.'))());
+                        } catch (e) {
+                            currentInput = 'Erro';
+                        }
+                    } else if (value === ',') {
+                        if (!currentInput.includes(',')) {
+                            currentInput += value;
+                        }
+                    }
+                    else {
+                        if (currentInput === '0' || currentInput === 'Erro') {
+                            currentInput = value;
+                        } else {
+                            currentInput += value;
+                        }
+                    }
+                    display.textContent = currentInput.replace(/\./g, ',');
+                });
+            });
+        }
+
+
+        // --- LÓGICA PRINCIPAL ---
+        function initialize() {
+            // Unpaid View Year Selector
+            const anoSelectUnpaid = document.getElementById('ano');
+            for (let year = 2025; year >= 1995; year--) {
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = year;
+                anoSelectUnpaid.appendChild(option);
+            }
+            
+            // Paid View Year Selectors
+            const anoSelectPaid = document.getElementById('ano_paid'); // Vencimento
+            for (let year = 2025; year >= 1995; year--) {
+                 const option = document.createElement('option');
+                 option.value = year;
+                 option.textContent = year;
+                 anoSelectPaid.appendChild(option);
+            }
+
+            const anoPgtoSelect = document.getElementById('ano_pgto'); // Pagamento
+            const mesPgtoSelect = document.getElementById('mes_pgto'); // Pagamento
+            for (let year = 2025; year >= 1995; year--) {
+                const optionPayment = document.createElement('option');
+                optionPayment.value = year;
+                optionPayment.textContent = year;
+                anoPgtoSelect.appendChild(optionPayment);
+            }
+            for (let mes = 1; mes <= 12; mes++) {
+                const option = document.createElement('option');
+                option.value = mes;
+                option.textContent = mesesNomes[mes];
+                mesPgtoSelect.appendChild(option);
+            }
+            anoPgtoSelect.value = appState.paid.paymentDate.year;
+            mesPgtoSelect.value = appState.paid.paymentDate.month;
+
+
+            addEventListeners();
+            initializeTheme();
+            initializeCalculator();
+            render();
+        }
+
+        function initializeTheme() {
+            const themeToggle = document.getElementById('theme-toggle');
+            const lightIcon = document.getElementById('theme-icon-light');
+            const darkIcon = document.getElementById('theme-icon-dark');
+
+            const applyTheme = (theme) => {
+                if (theme === 'dark') {
+                    document.documentElement.classList.add('dark');
+                    lightIcon.classList.add('hidden');
+                    darkIcon.classList.remove('hidden');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    darkIcon.classList.add('hidden');
+                    lightIcon.classList.remove('hidden');
+                }
+                appState.theme = theme;
+            };
+
+            themeToggle.addEventListener('click', () => {
+                const newTheme = appState.theme === 'light' ? 'dark' : 'light';
+                localStorage.setItem('theme', newTheme);
+                applyTheme(newTheme);
+            });
+
+            const savedTheme = localStorage.getItem('theme');
+            // Default to light mode unless a theme is saved
+            applyTheme(savedTheme || 'light');
+        }
+        
+        function addEventListeners() {
+            tabs.unpaid.addEventListener('click', () => setActiveView('unpaid'));
+            tabs.paid.addEventListener('click', () => setActiveView('paid'));
+            
+            document.getElementById('btnSelic').addEventListener('click', () => setCalculationType('SELIC', 'unpaid'));
+            document.getElementById('btnIgpd').addEventListener('click', () => setCalculationType('IGPDI', 'unpaid'));
+            document.getElementById('addDebtBtn').addEventListener('click', () => addPendingDebts('unpaid'));
+            document.getElementById('newCalcBtn').addEventListener('click', () => startNewCalculation('unpaid'));
+            document.getElementById('exportBtn').addEventListener('click', () => exportToExcel('unpaid'));
+            document.getElementById('mes-selector-btn').addEventListener('click', () => toggleMonthDropdown('unpaid'));
+            document.getElementById('ano').addEventListener('change', () => renderMonthSelector('unpaid'));
+
+            document.getElementById('addDebtBtn_paid').addEventListener('click', () => addPendingDebts('paid'));
+            document.getElementById('newCalcBtn_paid').addEventListener('click', () => startNewCalculation('paid'));
+            document.getElementById('exportBtn_paid').addEventListener('click', () => exportToExcel('paid'));
+            document.getElementById('mes-selector-btn_paid').addEventListener('click', () => toggleMonthDropdown('paid'));
+            document.getElementById('ano_paid').addEventListener('change', () => renderMonthSelector('paid'));
+            document.getElementById('ano_pgto').addEventListener('change', (e) => { appState.paid.paymentDate.year = e.target.value; render(); });
+            document.getElementById('mes_pgto').addEventListener('change', (e) => { appState.paid.paymentDate.month = e.target.value; render(); });
+
+
+            document.addEventListener('click', (e) => {
+                const dropdownUnpaid = document.getElementById('mes-selector-dropdown');
+                const btnUnpaid = document.getElementById('mes-selector-btn');
+                if (dropdownUnpaid.parentElement === document.body && !btnUnpaid.contains(e.target) && !dropdownUnpaid.contains(e.target)) {
+                     document.getElementById('mes-selector-container-unpaid').querySelector('.form-multiselect').appendChild(dropdownUnpaid);
+                     dropdownUnpaid.classList.add('hidden');
+                }
+
+                const dropdownPaid = document.getElementById('mes-selector-dropdown_paid');
+                const btnPaid = document.getElementById('mes-selector-btn_paid');
+                 if (dropdownPaid.parentElement === document.body && !btnPaid.contains(e.target) && !dropdownPaid.contains(e.target)) {
+                     document.getElementById('mes-selector-container-paid').querySelector('.form-multiselect').appendChild(dropdownPaid);
+                     dropdownPaid.classList.add('hidden');
+                }
+            });
+        }
+        
+        function toggleMonthDropdown(viewName) {
+            const suffix = viewName === 'paid' ? '_paid' : '';
+            const dropdown = document.getElementById(`mes-selector-dropdown${suffix}`);
+            const button = document.getElementById(`mes-selector-btn${suffix}`);
+            const container = document.getElementById(`mes-selector-container-${viewName}`);
+
+            const isOpen = !dropdown.classList.contains('hidden');
+
+            if (isOpen) {
+                dropdown.classList.add('hidden');
+                // Move back to original container if it was moved
+                if (dropdown.parentElement === document.body) {
+                    container.querySelector('.form-multiselect').appendChild(dropdown);
+                }
+            } else {
+                // Move to body to avoid clipping, then position it
+                document.body.appendChild(dropdown);
+                const rect = button.getBoundingClientRect();
+                dropdown.style.position = 'absolute';
+                dropdown.style.top = `${rect.bottom + window.scrollY}px`;
+                dropdown.style.left = `${rect.left + window.scrollX}px`;
+                dropdown.style.width = `${rect.width}px`;
+                dropdown.classList.remove('hidden');
+            }
+        }
+
+        function setActiveView(viewName) {
+            if (appState.activeView === viewName) return;
+            appState.activeView = viewName;
+            render();
+        }
+
+        function setCalculationType(type, viewName) {
+            if (appState[viewName].calculationType === type) return;
+            appState[viewName].calculationType = type;
+            render();
+        }
+
+        function startNewCalculation(viewName) {
+             appState[viewName].debts = []; 
+             appState[viewName].pendingDebts = [];
+             render();
+        }
+        
+        function addPendingDebts(viewName) {
+            const pending = appState[viewName].pendingDebts;
+            if(pending.length === 0){
+                showAlert("Nenhum mês selecionado para adicionar.");
+                return;
+            }
+
+            const newDebts = pending.map(p => ({
+                id: p.id,
+                valorOriginal: p.valorOriginal,
+                multa: p.multa,
+                ano: p.year,
+                mes: p.month
+            }));
+            
+            appState[viewName].debts.push(...newDebts);
+            appState[viewName].pendingDebts = []; 
+            render();
+        }
+        
+        function removePendingDebt(viewName, pendingDebtId) {
+            appState[viewName].pendingDebts = appState[viewName].pendingDebts.filter(p => p.id !== pendingDebtId);
+            render();
+        }
+
+        function removeDebt(id, viewName) {
+            appState[viewName].debts = appState[viewName].debts.filter(debt => debt.id !== id);
+            render();
+        }
+
+        // --- FUNÇÕES DE RENDERIZAÇÃO ---
+        function render() {
+            Object.keys(views).forEach(key => {
+                views[key].style.display = (key === appState.activeView) ? 'block' : 'none';
+            });
+
+            renderActiveTab();
+            const viewName = appState.activeView;
+            if(viewName === 'unpaid'){
+                renderCorrectionTypeSelector();
+            } else {
+                checkDateConsistency();
+            }
+            renderMonthSelector(viewName);
+            renderCustomValuesSection(viewName);
+            renderTableHeader(viewName);
+            renderTableBody(viewName);
+            renderTableFooter(viewName);
+            feather.replace();
+        }
+
+        function renderActiveTab() {
+            Object.keys(tabs).forEach(key => {
+                 const tab = tabs[key];
+                 tab.classList.toggle('tab-active', key === appState.activeView);
+                 tab.classList.toggle('text-blue-800', key === appState.activeView);
+                 tab.classList.toggle('dark:text-blue-400', key === appState.activeView);
+                 tab.classList.toggle('font-semibold', key === appState.activeView);
+                 tab.classList.toggle('tab-inactive', key !== appState.activeView);
+                 tab.classList.toggle('text-gray-500', key !== appState.activeView);
+                 tab.classList.toggle('dark:text-gray-400', key !== appState.activeView);
+            });
+        }
+        
+        function renderCorrectionTypeSelector() {
+            const btnSelic = document.getElementById('btnSelic');
+            const btnIgpd = document.getElementById('btnIgpd');
+            const activeClasses = ['bg-blue-600', 'text-white', 'shadow-lg', 'scale-105'];
+            const inactiveClasses = ['bg-gray-200', 'text-gray-600', 'hover:bg-gray-300', 'dark:bg-slate-700', 'dark:text-gray-300', 'dark:hover:bg-slate-600'];
+            
+            if (appState.unpaid.calculationType === 'SELIC') {
+                btnSelic.classList.add(...activeClasses);
+                btnSelic.classList.remove(...inactiveClasses);
+                btnIgpd.classList.add(...inactiveClasses);
+                btnIgpd.classList.remove(...activeClasses);
+            } else {
+                btnIgpd.classList.add(...activeClasses);
+                btnIgpd.classList.remove(...inactiveClasses);
+                btnSelic.classList.add(...inactiveClasses);
+                btnSelic.classList.remove(...activeClasses);
+            }
+        }
+
+        function renderMonthSelector(viewName) {
+            const suffix = viewName === 'paid' ? '_paid' : '';
+            const anoSelect = document.getElementById(`ano${suffix}`);
+            const dropdown = document.getElementById(`mes-selector-dropdown${suffix}`);
+            
+            const currentYear = parseInt(anoSelect.value);
+            let availableMonths = [];
+            const dataSource = viewName === 'paid' ? igpdiData : selicData;
+            
+            for (let mes = 1; mes <= 12; mes++) {
+                if (dataSource[currentYear]?.[mes] !== undefined) {
+                    availableMonths.push(mes);
+                }
+            }
+            dropdown.innerHTML = '';
+
+            const selectAllContainer = document.createElement('div');
+            selectAllContainer.className = 'px-3 py-2 border-b border-gray-200 dark:border-slate-600';
+            selectAllContainer.innerHTML = `<label class="flex items-center space-x-3 cursor-pointer"><input type="checkbox" id="select-all-months${suffix}" class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"><span class="text-gray-800 dark:text-gray-200 font-semibold text-sm">Selecionar Todos</span></label>`;
+            dropdown.appendChild(selectAllContainer);
+            
+            availableMonths.forEach(mes => {
+                const pendingDebtId = `${currentYear}-${mes}`;
+                const isChecked = appState[viewName].pendingDebts.some(p => p.id === pendingDebtId);
+                const optionContainer = document.createElement('div');
+                optionContainer.className = 'px-3 py-2 hover:bg-blue-50 dark:hover:bg-slate-600';
+                optionContainer.innerHTML = `<label class="flex items-center space-x-3 cursor-pointer"><input type="checkbox" value="${mes}" class="month-checkbox${suffix}" ${isChecked ? 'checked' : ''}><span class="text-gray-700 dark:text-gray-300 text-sm">${mesesNomes[mes]}</span></label>`;
+                
+                optionContainer.querySelector('input').addEventListener('change', (e) => {
+                    if (e.target.checked) {
+                        if (!appState[viewName].pendingDebts.some(p => p.id === pendingDebtId)) {
+                             appState[viewName].pendingDebts.push({
+                                id: pendingDebtId,
+                                year: currentYear,
+                                month: mes,
+                                valorOriginal: 0,
+                                multa: 20
+                            });
+                        }
+                    } else {
+                        appState[viewName].pendingDebts = appState[viewName].pendingDebts.filter(p => p.id !== pendingDebtId);
+                    }
+                    render();
+                });
+                dropdown.appendChild(optionContainer);
+            });
+            
+            document.getElementById(`select-all-months${suffix}`).addEventListener('change', (e) => {
+                const currentlySelectedForThisYear = appState[viewName].pendingDebts.filter(p => p.year === currentYear).map(p => p.month);
+
+                if (e.target.checked) {
+                    availableMonths.forEach(mes => {
+                        if (!currentlySelectedForThisYear.includes(mes)) {
+                            const pendingDebtId = `${currentYear}-${mes}`;
+                             appState[viewName].pendingDebts.push({
+                                id: pendingDebtId,
+                                year: currentYear,
+                                month: mes,
+                                valorOriginal: 0,
+                                multa: 20
+                            });
+                        }
+                    });
+                } else {
+                    appState[viewName].pendingDebts = appState[viewName].pendingDebts.filter(p => p.year !== currentYear);
+                }
+                 render();
+            });
+            renderMonthSelectorDisplay(viewName);
+        }
+        
+        function renderMonthSelectorDisplay(viewName) {
+            const suffix = viewName === 'paid' ? '_paid' : '';
+            const count = appState[viewName].pendingDebts.length;
+            const selectorText = document.getElementById(`mes-selector-text${suffix}`);
+            
+            if (count === 0) {
+                selectorText.textContent = "Selecione o(s) mês(es)";
+                selectorText.classList.add('text-gray-500', 'dark:text-gray-400');
+                selectorText.classList.remove('text-gray-900', 'dark:text-gray-200', 'font-semibold');
+            } else {
+                selectorText.textContent = `${count} mes(es) na lista para adicionar`;
+                selectorText.classList.remove('text-gray-500', 'dark:text-gray-400');
+                selectorText.classList.add('text-gray-900', 'dark:text-gray-200', 'font-semibold');
+            }
+        }
+        
+        function renderCustomValuesSection(viewName) {
+            const suffix = viewName === 'paid' ? '_paid' : '';
+            const customSection = document.getElementById(`custom-values-section${suffix}`);
+            const customTableBody = document.getElementById(`custom-values-table-body${suffix}`);
+
+            if (appState[viewName].pendingDebts.length === 0) {
+                customSection.classList.add('hidden');
+                return;
+            }
+            
+            customSection.classList.remove('hidden');
+            
+            customTableBody.innerHTML = '';
+            
+            appState[viewName].pendingDebts.sort((a,b) => (a.year - b.year) || (a.month - b.month)).forEach(p => {
+                const row = document.createElement('tr');
+                row.className = "hover:bg-blue-50 dark:hover:bg-slate-700/50 transition-colors duration-200";
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800 dark:text-gray-300 text-left">${mesesNomesAbrev[p.month]}/${p.year}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                        <input type="text" oninput="formatBRLInput(event)" onblur="handleBlurWithCalculation(event, (result) => updatePendingDebtValue('${viewName}', '${p.id}', 'valorOriginal', result))" class="form-input bg-white dark:bg-slate-700 border-gray-300 dark:border-slate-600 text-center mt-1 block w-full rounded-md shadow-sm sm:text-sm">
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <input type="number" value="${p.multa}" onblur="updatePendingDebtValue('${viewName}', '${p.id}', 'multa', this.value)" min="0" oninput="if(this.value < 0) this.value = 0" class="form-input bg-white dark:bg-slate-700 border-gray-300 dark:border-slate-600 text-center mt-1 block w-full rounded-md shadow-sm sm:text-sm">
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-center">
+                        <button onclick="removePendingDebt('${viewName}', '${p.id}')" class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-500 transition-transform transform hover:scale-125">
+                            <i data-feather="x-circle" class="h-5 w-5"></i>
+                        </button>
+                    </td>
+                `;
+                const valorInput = row.querySelector('.form-input');
+                if (p.valorOriginal > 0) {
+                     valorInput.value = p.valorOriginal.toLocaleString('pt-BR', {minimumFractionDigits: 2});
+                }
+                customTableBody.appendChild(row);
+            });
+             feather.replace();
+        }
+
+        function renderTableHeader(viewName) {
+            const suffix = viewName === 'paid' ? '_paid' : '';
+            const tableHeader = document.getElementById(`tableHeader${suffix}`);
+            tableHeader.innerHTML = '';
+            let headers = [];
+            const commonClasses = "px-4 py-4 text-xs font-semibold text-white uppercase tracking-wider bg-blue-800";
+            if (viewName === 'unpaid') {
+                 if (appState.unpaid.calculationType === 'SELIC') {
+                    headers = [
+                        {text: 'Mês/Ano', align: 'text-left'}, 
+                        {text: 'Vlr. Original', align: 'text-center'}, 
+                        {text: 'Fator SELIC', align: 'text-center'}, 
+                        {text: 'Vlr. Corrigido', align: 'text-center'}, 
+                        {text: 'Multa (%)', align: 'text-center'}, 
+                        {text: 'Vlr. da Multa', align: 'text-center'}, 
+                        {text: 'Valor Total', align: 'text-center'}, 
+                        {text: 'Ação', align: 'text-center'}
+                    ];
+                } else {
+                    headers = [
+                        {text: 'Mês/Ano', align: 'text-left'},
+                        {text: 'Vlr. Original', align: 'text-center'},
+                        {text: 'Fator C.M.', align: 'text-center'},
+                        {text: 'Vlr. Corrigido', align: 'text-center'},
+                        {text: 'Juros (%)', align: 'text-center'},
+                        {text: 'Vlr. Juros', align: 'text-center'},
+                        {text: 'Multa (%)', align: 'text-center'},
+                        {text: 'Vlr. da Multa', align: 'text-center'},
+                        {text: 'Valor Total', align: 'text-center'},
+                        {text: 'Ação', align: 'text-center'}
+                    ];
+                }
+            } else {
+                const paymentMonth = appState.paid.paymentDate.month;
+                const paymentYear = appState.paid.paymentDate.year;
+                const paymentDateAbbrev = `${mesesNomesAbrev[paymentMonth]}/${paymentYear}`;
+                headers = [
+                    {text: 'Vencimento', align: 'text-left'},
+                    {text: 'Vlr. Original', align: 'text-center'},
+                    {text: 'UPF Venc.', align: 'text-center'},
+                    {text: 'Débito em UPF', align: 'text-center'},
+                    {text: `UPF Pagto.`, align: 'text-center'},
+                    {text: 'Vlr. Corrigido', align: 'text-center'},
+                    {text: 'Juros (%)', align: 'text-center'},
+                    {text: 'Vlr. Juros', align: 'text-center'},
+                    {text: 'Multa (%)', align: 'text-center'},
+                    {text: 'Vlr. Multa', align: 'text-center'},
+                    {text: 'Valor Total', align: 'text-center'},
+                    {text: 'Ação', align: 'text-center'}
+                ];
+            }
+            
+            const headerRow = document.createElement('tr');
+            headers.forEach((header, index) => {
+                let classes = `${commonClasses} ${header.align}`;
+                if (index === 0) classes += ' rounded-tl-xl';
+                if (index === headers.length - 1) classes += ' rounded-tr-xl';
+                headerRow.innerHTML += `<th scope="col" class="${classes}">${header.text}</th>`;
+            });
+            tableHeader.appendChild(headerRow);
+        }
+
+        function renderTableBody(viewName) {
+            const suffix = viewName === 'paid' ? '_paid' : '';
+            const tableBody = document.getElementById(`tableBody${suffix}`);
+            
+            tableBody.innerHTML = ''; 
+            if (appState[viewName].debts.length === 0) {
+                const tableHeader = document.getElementById(`tableHeader${suffix}`);
+                const colspan = tableHeader.firstElementChild?.children.length || 1;
+                
+                const noDataRow = document.createElement('tr');
+                noDataRow.id = `no-data-row${suffix}`;
+                noDataRow.innerHTML = `<td colspan="${colspan}" class="text-center p-10 text-gray-500 dark:text-gray-400"><div class="flex flex-col items-center gap-4"><i data-feather="archive" class="h-16 w-16 text-gray-300 dark:text-gray-500"></i><p>Nenhuma dívida calculada ainda.</p></div></td>`;
+                tableBody.appendChild(noDataRow);
+                return;
+            }
+
+            const sortedDebts = [...appState[viewName].debts].sort((a, b) => (a.ano - b.ano) || (a.mes - b.mes));
+            sortedDebts.forEach((debt, index) => {
+                const row = document.createElement('tr');
+                row.className = "hover:bg-blue-50 dark:hover:bg-slate-700/50 transition-colors duration-200 text-center";
+                row.style.animationDelay = `${index * 50}ms`;
+                
+                let calc;
+                if(viewName === 'unpaid') {
+                    calc = appState.unpaid.calculationType === 'SELIC' ? calculateSelic(debt, true) : calculateIgpdi(debt, true);
+                } else {
+                    calc = calculateUpfPaid(debt, true);
+                }
+                
+                if(viewName === 'unpaid') {
+                     if (appState.unpaid.calculationType === 'SELIC') {
+                         row.innerHTML = `
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 text-left">${mesesNomesAbrev[debt.mes]}/${debt.ano}</td>
+                            <td class="px-4 py-2 whitespace-nowrap text-sm"><input type="text" class="editable-input text-center bg-white dark:bg-slate-800 dark:text-gray-300" value="${formatCurrency(debt.valorOriginal)}" onfocus="this.value = window.parseFormattedCurrency(this.value).toFixed(2)" onblur="handleBlurWithCalculation(event, (result) => updateAndRender('unpaid', '${debt.id}', 'valorOriginal', result))"></td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">${formatPercent(calc.selicRate)}</td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">${formatCurrency(calc.valorCorrigido)}</td>
+                            <td class="px-4 py-2 whitespace-nowrap text-sm"><input type="number" step="0.01" class="editable-input text-center bg-white dark:bg-slate-800 dark:text-gray-300" value="${debt.multa}" onblur="window.updateAndRender('unpaid', '${debt.id}', 'multa', this.value)"></td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">${formatCurrency(calc.valorMulta)}</td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 font-semibold">${formatCurrency(calc.valorTotal)}</td>
+                         `;
+                     } else { // IGPDI
+                         row.innerHTML = `
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 text-left">${mesesNomesAbrev[debt.mes]}/${debt.ano}</td>
+                            <td class="px-4 py-2 whitespace-nowrap text-sm"><input type="text" class="editable-input text-center bg-white dark:bg-slate-800 dark:text-gray-300" value="${formatCurrency(debt.valorOriginal)}" onfocus="this.value = window.parseFormattedCurrency(this.value).toFixed(2)" onblur="handleBlurWithCalculation(event, (result) => updateAndRender('unpaid', '${debt.id}', 'valorOriginal', result))"></td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">${calc.fatorCM.toFixed(7).replace('.',',')}</td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">${formatCurrency(calc.valorCorrigido)}</td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">${formatPercent(calc.juros)}</td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">${formatCurrency(calc.valorJuros)}</td>
+                            <td class="px-4 py-2 whitespace-nowrap text-sm"><input type="number" step="0.01" class="editable-input text-center bg-white dark:bg-slate-800 dark:text-gray-300" value="${debt.multa}" onblur="window.updateAndRender('unpaid', '${debt.id}', 'multa', this.value)"></td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">${formatCurrency(calc.valorMulta)}</td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 font-semibold">${formatCurrency(calc.valorTotal)}</td>
+                         `;
+                     }
+                } else { // 'paid' view
+                    row.innerHTML = `
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 text-left">${mesesNomesAbrev[debt.mes]}/${debt.ano}</td>
+                        <td class="px-4 py-2 whitespace-nowrap text-sm"><input type="text" class="editable-input text-center bg-transparent dark:text-gray-300" value="${formatCurrency(debt.valorOriginal)}" onfocus="this.value = window.parseFormattedCurrency(this.value).toFixed(2)" onblur="handleBlurWithCalculation(event, (result) => updateAndRender('paid', '${debt.id}', 'valorOriginal', result))"></td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">${calc.upfVenc.toFixed(4).replace('.',',')}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">${formatDecimal(calc.debitoEmUpf)}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">${calc.upfPgto.toFixed(4).replace('.',',')}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">${formatCurrency(calc.valorCorrigido)}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">${formatPercent(calc.juros)}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">${formatCurrency(calc.valorJuros)}</td>
+                        <td class="px-4 py-2 whitespace-nowrap text-sm"><input type="number" step="0.01" class="editable-input text-center bg-transparent dark:text-gray-300" value="${debt.multa}" onblur="window.updateAndRender('paid', '${debt.id}', 'multa', this.value)"></td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">${formatCurrency(calc.valorMulta)}</td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 font-semibold">${formatCurrency(calc.valorTotal)}</td>
+                    `;
+                }
+
+                row.innerHTML += `<td class="px-4 py-3 whitespace-nowrap text-sm text-center"><button onclick="removeDebt('${debt.id}', '${viewName}')" class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-500 transition-transform transform hover:scale-125"><i data-feather="x-circle" class="h-5 w-5"></i></button></td>`;
+                tableBody.appendChild(row);
+            });
+        }
+        
+        function renderTableFooter(viewName) {
+            const suffix = viewName === 'paid' ? '_paid' : '';
+            const tableFooter = document.getElementById(`tableFooter${suffix}`);
+
+            tableFooter.innerHTML = '';
+            if (appState[viewName].debts.length === 0) return;
+            const footerRow = document.createElement('tr');
+            const commonClasses = "px-4 py-4 text-left text-sm font-bold text-gray-800 dark:text-gray-300";
+            const totalClasses = "px-4 py-4 text-center text-sm font-bold text-gray-800 dark:text-gray-300";
+            
+            const totals = appState[viewName].debts.reduce((acc, debt) => {
+                let calc;
+                 if(viewName === 'unpaid') {
+                    calc = appState.unpaid.calculationType === 'SELIC' ? calculateSelic(debt, true) : calculateIgpdi(debt, true);
+                } else {
+                    calc = calculateUpfPaid(debt, true);
+                }
+                
+                acc.original += debt.valorOriginal; // Use the raw value from the state
+                acc.corrigido += (calc.valorCorrigido || 0);
+                acc.multa += calc.valorMulta;
+                acc.total += calc.valorTotal;
+                acc.juros += (calc.valorJuros || 0);
+                return acc;
+            }, { original: 0, corrigido: 0, multa: 0, total: 0, juros: 0 });
+
+            if(viewName === 'unpaid'){
+                if (appState.unpaid.calculationType === 'SELIC') {
+                     footerRow.innerHTML = `
+                        <td class="${commonClasses}">TOTAIS</td>
+                        <td class="${totalClasses}">${formatCurrency(totals.original)}</td>
+                        <td></td>
+                        <td class="${totalClasses}">${formatCurrency(totals.corrigido)}</td>
+                        <td></td>
+                        <td class="${totalClasses}">${formatCurrency(totals.multa)}</td>
+                        <td class="${totalClasses} text-blue-700 dark:text-blue-400">${formatCurrency(totals.total)}</td>
+                        <td></td>`;
+                } else { // IGPDI
+                     footerRow.innerHTML = `
+                        <td class="${commonClasses}">TOTAIS</td>
+                        <td class="${totalClasses}">${formatCurrency(totals.original)}</td>
+                        <td></td>
+                        <td class="${totalClasses}">${formatCurrency(totals.corrigido)}</td>
+                        <td></td>
+                        <td class="${totalClasses}">${formatCurrency(totals.juros)}</td>
+                        <td></td>
+                        <td class="${totalClasses}">${formatCurrency(totals.multa)}</td>
+                        <td class="${totalClasses} text-blue-700 dark:text-blue-400">${formatCurrency(totals.total)}</td>
+                        <td></td>`;
+                }
+            } else { // 'paid' view with UPF
+                 footerRow.innerHTML = `
+                    <td class="${commonClasses}">TOTAIS</td>
+                    <td class="${totalClasses}">${formatCurrency(totals.original)}</td>
+                    <td colspan="4"></td>
+                    <td class="${totalClasses}">${formatCurrency(totals.juros)}</td>
+                    <td></td>
+                    <td class="${totalClasses}">${formatCurrency(totals.multa)}</td>
+                    <td class="${totalClasses} text-blue-700 dark:text-blue-400">${formatCurrency(totals.total)}</td>
+                    <td></td>`;
+            }
+            tableFooter.appendChild(footerRow);
+        }
+
+        // --- FUNÇÕES DE CÁLCULO ---
+        function calculateSelic(debt, raw = false) {
+            const { valorOriginal, multa, ano, mes } = debt;
+            const selicRate = selicData[ano]?.[mes] ?? 0;
+            const valorCorrigido = valorOriginal * (1 + selicRate / 100);
+            const valorMulta = valorCorrigido * (multa / 100);
+            const valorTotal = valorCorrigido + valorMulta;
+            if (raw) return { valorOriginal, valorCorrigido, valorMulta, valorTotal, selicRate };
+        }
+
+        function calculateIgpdi(debt, raw = false) {
+            const { valorOriginal, multa, ano, mes } = debt;
+            const igpdi = igpdiData[ano]?.[mes] ?? { am: 1, juros: 0 };
+            const valorCorrigido = valorOriginal * igpdi.am;
+            const valorJuros = valorCorrigido * (igpdi.juros / 100);
+            const valorMulta = valorCorrigido * (multa / 100);
+            const valorTotal = valorCorrigido + valorJuros + valorMulta;
+            if(raw) return {valorOriginal, valorCorrigido, valorJuros, valorMulta, valorTotal, fatorCM: igpdi.am, juros: igpdi.juros};
+        }
+
+        function getUpfValue(year, month) {
+            const lastUpfValue = 4.6802; // UPF for June 2025
+            const am = igpdiData[year]?.[month]?.am ?? 1;
+            if (am === 1) return upfData[year]?.[month] ?? 1; // Use direct data if available or default
+            return lastUpfValue / am;
+        }
+        
+        function calculateUpfPaid(debt, raw = false) {
+            const { valorOriginal, multa, ano, mes } = debt;
+            const { month: paymentMonth, year: paymentYear } = appState.paid.paymentDate;
+
+            const upfVencimento = getUpfValue(ano, mes);
+            const upfPagamento = getUpfValue(paymentYear, paymentMonth);
+
+            const jurosVencimento = igpdiData[ano]?.[mes]?.juros ?? 0;
+            const jurosPagamento = igpdiData[paymentYear]?.[paymentMonth]?.juros ?? 0;
+            const jurosRate = jurosVencimento - jurosPagamento;
+
+            const debitoEmUpf = valorOriginal / upfVencimento;
+            const valorCorrigido = debitoEmUpf * upfPagamento;
+            const valorJuros = valorCorrigido * (jurosRate / 100);
+            const valorMulta = valorCorrigido * (multa / 100);
+            const valorTotal = valorCorrigido + valorJuros + valorMulta;
+
+            if (raw) return { valorOriginal, valorCorrigido, valorMulta, valorTotal, upfVenc: upfVencimento, debitoEmUpf, upfPgto: upfPagamento, juros: jurosRate, valorJuros };
+        }
+
+        function checkDateConsistency() {
+            const warningDiv = document.getElementById('date-warning');
+            const { year: paymentYear, month: paymentMonth } = appState.paid.paymentDate;
+            const paymentDate = new Date(paymentYear, paymentMonth - 1);
+            
+            const allDebts = [...appState.paid.debts, ...appState.paid.pendingDebts];
+            let isInconsistent = false;
+
+            for(const debt of allDebts) {
+                const dueDate = new Date(debt.year, debt.month - 1);
+                if (dueDate > paymentDate) {
+                    isInconsistent = true;
+                    break;
+                }
+            }
+            
+            warningDiv.classList.toggle('hidden', !isInconsistent);
+        }
+
+        // --- EXPORTAÇÃO ---
+        function exportToExcel(viewName) {
+            const currentView = typeof viewName === 'string' ? viewName : appState.activeView;
+            if (appState[currentView].debts.length === 0) {
+                showAlert("Não há dados para exportar.");
+                return;
+            }
+            
+            let key = currentView;
+            if (currentView === 'unpaid') {
+                key += `_${appState.unpaid.calculationType}`;
+            }
+
+            let headers;
+            if (key === 'paid') {
+                 const paymentMonth = appState.paid.paymentDate.month;
+                 const paymentYear = appState.paid.paymentDate.year;
+                 const paymentDateAbbrev = `${mesesNomesAbrev[paymentMonth]}/${paymentYear}`;
+                 headers = ['Vencimento', 'Vlr. Original', 'UPF Venc.', 'Débito em UPF', `UPF Pagto.`, 'Vlr. Corrigido', 'Juros (%)', 'Vlr. Juros', 'Multa (%)', 'Vlr. Multa', 'Valor Total'];
+            } else {
+                const headersMap = {
+                    unpaid_SELIC: ['Mês/Ano', 'Vlr. Original', 'Fator SELIC', 'Vlr. Corrigido', 'Multa (%)', 'Vlr. da Multa', 'Valor Total'],
+                    unpaid_IGPDI: ['Mês/Ano', 'Vlr. Original', 'Fator C.M.', 'Vlr. Corrigido', 'Juros (%)', 'Vlr. Juros', 'Multa (%)', 'Vlr. da Multa', 'Valor Total'],
+                };
+                headers = headersMap[key];
+            }
+            
+            const dataForExport = appState[currentView].debts.map(debt => {
+                 let calc;
+                 if(currentView === 'unpaid') {
+                    calc = appState.unpaid.calculationType === 'SELIC' ? calculateSelic(debt, true) : calculateIgpdi(debt, true);
+                    if(appState.unpaid.calculationType === 'SELIC') {
+                        return [ `${mesesNomesAbrev[debt.mes]}/${debt.ano}`, debt.valorOriginal, calc.selicRate, calc.valorCorrigido, debt.multa, calc.valorMulta, calc.valorTotal];
+                    } else {
+                        return [ `${mesesNomesAbrev[debt.mes]}/${debt.ano}`, debt.valorOriginal, calc.fatorCM, calc.valorCorrigido, calc.juros, calc.valorJuros, debt.multa, calc.valorMulta, calc.valorTotal];
+                    }
+                } else {
+                    calc = calculateUpfPaid(debt, true);
+                    return [ `${mesesNomesAbrev[debt.mes]}/${debt.ano}`, debt.valorOriginal, calc.upfVenc, calc.debitoEmUpf, calc.upfPgto, calc.valorCorrigido, calc.juros, calc.valorJuros, debt.multa, calc.valorMulta, calc.valorTotal];
+                }
+            });
+
+            const totals = appState[currentView].debts.reduce((acc, debt) => {
+                let calc;
+                 if(currentView === 'unpaid') {
+                    calc = appState.unpaid.calculationType === 'SELIC' ? calculateSelic(debt, true) : calculateIgpdi(debt, true);
+                } else {
+                    calc = calculateUpfPaid(debt, true);
+                }
+                
+                acc.original += debt.valorOriginal;
+                acc.corrigido += (calc.valorCorrigido || 0);
+                acc.multa += calc.valorMulta;
+                acc.total += calc.valorTotal;
+                acc.juros += (calc.valorJuros || 0);
+                return acc;
+            }, { original: 0, corrigido: 0, multa: 0, total: 0, juros: 0 });
+
+            let totalsRow = [];
+            if(key === 'unpaid_SELIC') {
+                totalsRow = ['TOTAIS', totals.original, null, totals.corrigido, null, totals.multa, totals.total];
+            } else if (key === 'unpaid_IGPDI') {
+                totalsRow = ['TOTAIS', totals.original, null, totals.corrigido, null, totals.juros, null, totals.multa, totals.total];
+            } else if (key === 'paid') {
+                totalsRow = ['TOTAIS', totals.original, null, null, null, totals.corrigido, null, totals.juros, null, totals.multa, totals.total];
+            }
+
+            const sheetData = [headers, ...dataForExport, [], totalsRow];
+            const ws = XLSX.utils.aoa_to_sheet(sheetData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Cálculo de Dívidas");
+            XLSX.writeFile(wb, `calculo_dividas_${currentView}.xlsx`);
+        }
+        
+        // --- INICIALIZAÇÃO ---
+        document.addEventListener('DOMContentLoaded', initialize);
+    </script>
+</body>
+</html>
