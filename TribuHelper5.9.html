@@ -99,6 +99,21 @@
         .dark .calculator {
             background-color: rgba(30, 41, 59, 0.8);
         }
+
+        /* --- Tooltip Styles --- */
+        .tooltip {
+            position: absolute;
+            background-color: rgba(0, 0, 0, 0.75);
+            color: #fff;
+            padding: 6px 8px;
+            border-radius: 4px;
+            font-size: 0.875rem;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            white-space: normal;
+            max-width: 200px;
+        }
     </style>
     <script>
       tailwind.config = {
@@ -143,7 +158,7 @@
             <h1 class="text-5xl font-bold text-blue-900 dark:text-blue-400">TribuHelper</h1>
             <p class="text-lg text-gray-500 dark:text-gray-400 mt-2">Uma ferramenta por Lemos Dantas Consultoria</p>
             <div class="absolute top-0 left-0">
-                 <button id="calculator-toggle" class="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-gray-300 dark:focus:ring-slate-600">
+                <button id="calculator-toggle" class="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-gray-300 dark:focus:ring-slate-600" data-tooltip="Mostra ou esconde a calculadora r\u00e1pida para fazer contas sem sair da p\u00e1gina.">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect>
                         <line x1="8" y1="6" x2="16" y2="6"></line>
@@ -158,7 +173,7 @@
                 </button>
             </div>
              <div class="absolute top-0 right-0">
-                <button id="theme-toggle" class="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-gray-300 dark:focus:ring-slate-600">
+            <button id="theme-toggle" class="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-gray-300 dark:focus:ring-slate-600" data-tooltip="Altera entre os modos claro e escuro para facilitar a visualiza\u00e7\u00e3o.">
                     <i id="theme-icon-light" data-feather="sun"></i>
                     <i id="theme-icon-dark" data-feather="moon" class="hidden"></i>
                 </button>
@@ -171,8 +186,8 @@
             <!-- Tab Navigation -->
             <nav class="border-b border-gray-200 dark:border-slate-700 mb-8">
                 <div class="flex space-x-8">
-                    <button id="tab-unpaid" class="tab tab-active text-blue-800 dark:text-blue-400 font-semibold whitespace-nowrap pb-4 px-1 text-lg">Dívidas Atuais</button>
-                    <button id="tab-paid" class="tab tab-inactive text-gray-500 dark:text-gray-400 hover:text-blue-700 dark:hover:text-blue-500 whitespace-nowrap pb-4 px-1 text-lg">Dívidas Vencidas</button>
+                    <button id="tab-unpaid" class="tab tab-active text-blue-800 dark:text-blue-400 font-semibold whitespace-nowrap pb-4 px-1 text-lg" data-tooltip="Visualiza e calcula d\u00edvidas que ainda n\u00e3o foram pagas.">D\u00edvidas Atuais</button>
+                    <button id="tab-paid" class="tab tab-inactive text-gray-500 dark:text-gray-400 hover:text-blue-700 dark:hover:text-blue-500 whitespace-nowrap pb-4 px-1 text-lg" data-tooltip="Visualiza e calcula d\u00edvidas j\u00e1 pagas que precisam de corre\u00e7\u00e3o.">D\u00edvidas Vencidas</button>
                     <button class="tab tab-inactive text-gray-400 dark:text-gray-600 cursor-not-allowed whitespace-nowrap pb-4 px-1 text-lg">Em Breve</button>
                 </div>
             </nav>
@@ -184,8 +199,8 @@
                     <section class="pop-in" style="animation-delay: 200ms;">
                         <h2 class="text-2xl font-semibold text-gray-800 dark:text-gray-200 mb-4 flex items-center"><span class="bg-blue-500 text-white rounded-full h-8 w-8 text-sm flex items-center justify-center mr-3">1</span> Tipo de Correção</h2>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <button id="btnSelic" class="rate-selector-active transition duration-300 ease-in-out flex-1 text-center py-4 px-5 rounded-xl font-semibold">SELIC Acumulada</button>
-                            <button id="btnIgpd" class="rate-selector-inactive transition duration-300 ease-in-out flex-1 text-center py-4 px-5 rounded-xl font-semibold">IGP-DI (SEFAZ/AP)</button>
+                            <button id="btnSelic" class="rate-selector-active transition duration-300 ease-in-out flex-1 text-center py-4 px-5 rounded-xl font-semibold" data-tooltip="Aplica a SELIC acumulada para corrigir os valores devidos.">SELIC Acumulada</button>
+                            <button id="btnIgpd" class="rate-selector-inactive transition duration-300 ease-in-out flex-1 text-center py-4 px-5 rounded-xl font-semibold" data-tooltip="Utiliza o \u00edndice IGP-DI da SEFAZ/AP para a corre\u00e7\u00e3o monet\u00e1ria.">IGP-DI (SEFAZ/AP)</button>
                         </div>
                         <p class="text-center text-sm text-red-500 dark:text-red-400 font-medium mt-4">Atenção: Valores atualizados até 30/06/2025. O sistema precisa de atualizações mensais.</p>
                     </section>
@@ -219,7 +234,7 @@
                                     </table>
                                 </div>
                             </div>
-                            <div class="mt-6 flex justify-end"><button id="addDebtBtn" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg shadow-md transition-transform transform hover:scale-105 flex items-center justify-center gap-2"><i data-feather="plus-circle" class="h-5 w-5"></i>Adicionar Dívida(s)</button></div>
+                            <div class="mt-6 flex justify-end"><button id="addDebtBtn" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg shadow-md transition-transform transform hover:scale-105 flex items-center justify-center gap-2" data-tooltip="Adiciona \u00e0 lista as d\u00edvidas selecionadas nos campos acima."><i data-feather="plus-circle" class="h-5 w-5"></i>Adicionar D\u00edvida(s)</button></div>
                         </div>
                     </section>
 
@@ -228,8 +243,8 @@
                         <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
                             <h2 class="text-2xl font-semibold text-gray-800 dark:text-gray-200 flex items-center"><span class="bg-blue-500 text-white rounded-full h-8 w-8 text-sm flex items-center justify-center mr-3">3</span> Resultados</h2>
                             <div class="flex space-x-3">
-                                <button id="newCalcBtn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow transition-transform transform hover:scale-105 flex items-center gap-2"><i data-feather="trash-2" class="w-4 h-4"></i>Novo Cálculo</button>
-                                <button id="exportBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow transition-transform transform hover:scale-105 flex items-center gap-2"><i data-feather="download" class="w-4 h-4"></i>Exportar</button>
+                                <button id="newCalcBtn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow transition-transform transform hover:scale-105 flex items-center gap-2" data-tooltip="Limpa todos os dados para iniciar um novo c\u00e1lculo."><i data-feather="trash-2" class="w-4 h-4"></i>Novo C\u00e1lculo</button>
+                                <button id="exportBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow transition-transform transform hover:scale-105 flex items-center gap-2" data-tooltip="Gera um arquivo Excel com os resultados calculados."><i data-feather="download" class="w-4 h-4"></i>Exportar</button>
                             </div>
                         </div>
                         <div class="overflow-x-auto rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
@@ -275,7 +290,7 @@
                                     </table>
                                 </div>
                             </div>
-                            <div class="mt-6 flex justify-end"><button id="addDebtBtn_paid" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg shadow-md transition-transform transform hover:scale-105 flex items-center justify-center gap-2"><i data-feather="plus-circle" class="h-5 w-5"></i>Adicionar Dívida(s)</button></div>
+                            <div class="mt-6 flex justify-end"><button id="addDebtBtn_paid" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg shadow-md transition-transform transform hover:scale-105 flex items-center justify-center gap-2" data-tooltip="Adiciona \u00e0 lista as d\u00edvidas selecionadas nos campos acima."><i data-feather="plus-circle" class="h-5 w-5"></i>Adicionar D\u00edvida(s)</button></div>
                         </div>
                     </section>
                     
@@ -310,8 +325,8 @@
                         <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
                              <h2 class="text-2xl font-semibold text-gray-800 dark:text-gray-200 flex items-center"><span class="bg-blue-500 text-white rounded-full h-8 w-8 text-sm flex items-center justify-center mr-3">3</span> Resultados</h2>
                             <div class="flex space-x-3">
-                                <button id="newCalcBtn_paid" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow transition-transform transform hover:scale-105 flex items-center gap-2"><i data-feather="trash-2" class="w-4 h-4"></i>Novo Cálculo</button>
-                                <button id="exportBtn_paid" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow transition-transform transform hover:scale-105 flex items-center gap-2"><i data-feather="download" class="w-4 h-4"></i>Exportar</button>
+                                <button id="newCalcBtn_paid" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow transition-transform transform hover:scale-105 flex items-center gap-2" data-tooltip="Limpa todos os dados para iniciar um novo c\u00e1lculo."><i data-feather="trash-2" class="w-4 h-4"></i>Novo C\u00e1lculo</button>
+                                <button id="exportBtn_paid" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow transition-transform transform hover:scale-105 flex items-center gap-2" data-tooltip="Gera um arquivo Excel com os resultados calculados."><i data-feather="download" class="w-4 h-4"></i>Exportar</button>
                             </div>
                         </div>
                         <div class="overflow-x-auto rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
@@ -561,6 +576,32 @@
             });
         }
 
+        function initializeTooltips() {
+            const tooltip = document.createElement('div');
+            tooltip.className = 'tooltip';
+            document.body.appendChild(tooltip);
+
+            document.querySelectorAll('[data-tooltip]').forEach(el => {
+                let timeoutId;
+                el.addEventListener('mouseenter', (e) => {
+                    timeoutId = setTimeout(() => {
+                        tooltip.textContent = el.getAttribute('data-tooltip');
+                        tooltip.style.top = `${e.clientY + 15}px`;
+                        tooltip.style.left = `${e.clientX + 15}px`;
+                        tooltip.style.opacity = '1';
+                    }, 3000);
+                });
+                el.addEventListener('mousemove', (e) => {
+                    tooltip.style.top = `${e.clientY + 15}px`;
+                    tooltip.style.left = `${e.clientX + 15}px`;
+                });
+                el.addEventListener('mouseleave', () => {
+                    clearTimeout(timeoutId);
+                    tooltip.style.opacity = '0';
+                });
+            });
+        }
+
 
         // --- LÓGICA PRINCIPAL ---
         function initialize() {
@@ -603,6 +644,7 @@
             addEventListeners();
             initializeTheme();
             initializeCalculator();
+            initializeTooltips();
             render();
         }
 
